@@ -27,9 +27,9 @@ module VGA_Display(input clk,
 				   output reg[3:0] get_score,
 				   output reg score_signal,			   
 				   output reg end_game,
-				   output reg[2:0] Red,
-				   output reg[2:0] Green,
-				   output reg[2:0] Blue,
+				   output reg[3:0] Red,
+				   output reg[3:0] Green,
+				   output reg[3:0] Blue,
 				   output reg hs,
 				   output reg vs
     			   );
@@ -71,7 +71,7 @@ module VGA_Display(input clk,
 
 
 	/*生成hs与vs的计时*/
-	always@(posedge(Div[2])) 
+	always@(posedge clk) 
 	begin
 		/*重置HCnt和VCnt的条件*/
 		if( Hcnt == PLD-1 ) //达到行边
@@ -109,7 +109,7 @@ module VGA_Display(input clk,
 	*/
 
 	//显示球、两个板子，很可能有bug
-	always @ (posedge Div[2])   
+	always @ (posedge clk)   
 	begin  
 		//展现当前板
 		if (Vcnt >= current_plate_y - current_plate_r 
@@ -117,9 +117,9 @@ module VGA_Display(input clk,
 			&& Hcnt >= current_plate_x - current_plate_r
 			&& Hcnt <= current_plate_x + current_plate_r) 
 		begin //随机颜色
-			Red <= Div[2:0];  
-			Green <= Hcnt[5:3];  
-			Blue <= Hcnt[8:6]; 
+			Red <= Hcnt[3:0];  
+			Green <= Hcnt[6:3];  
+			Blue <= Hcnt[9:6]; 
 		end  
 		
 		// 展现当前球
@@ -128,15 +128,15 @@ module VGA_Display(input clk,
 				&& Hcnt >= ball_x - ball_r
 				&& Hcnt <= ball_x + ball_r)
 		begin  
-			Red <= 3'b010;//小球颜色，有机会慢慢改
-			Green <= 3'b010;  
-			Blue <= 3'b010;
+			Red <= 4'b0100;//小球颜色，有机会慢慢改
+			Green <= 4'b0100;  
+			Blue <= 4'b0100;
 		end  
 		else 
 		begin
-			Red <= 3'b000;  
-			Green <= 3'b000;  
-			Blue <= 3'b00;  
+			Red <= 4'b0000;  
+			Green <= 4'b0000;  
+			Blue <= 4'b000;  
 		end		 
 	end
 
@@ -182,6 +182,4 @@ module VGA_Display(input clk,
 			score_signal <= ~score_signal;
 		end
    end
-
-
 endmodule
