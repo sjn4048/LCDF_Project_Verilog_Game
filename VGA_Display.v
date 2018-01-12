@@ -20,166 +20,205 @@
 //////////////////////////////////////////////////////////////////////////////////
 module VGA_Display(input clk,
 				   input rst,
-				   input [1:0] position,
+				   input keyReady,
 				   input [3:0] press_time,
-				   input [31:0] Div,
+				   input sclk,//作为分频
+				   input [15:0] SW, //暂时没用
 				   input is_pressing, //下一轮刷新的开始
+				   input [8:0] Vcnt,//接row
+				   input [9:0] Hcnt,//接col
+					input [4:0] random,
 				   output reg[3:0] get_score,
 				   output reg score_signal,			   
 				   output reg end_game,
 				   output reg[3:0] Red,
 				   output reg[3:0] Green,
-				   output reg[3:0] Blue,
-				   output reg hs,
-				   output reg vs
+				   output reg[3:0] Blue, 
+				   output reg rdn
     			   );
 
-	/* parameter 区域 */
-	//VGA屏幕参数，我也不知道为啥系列。不行再改
-	parameter PAL = 640;		//Pixels/Active Line (pixels)
-	parameter LAF = 480;		//Lines/Active Frame (lines)
-	parameter PLD = 800;	    //Pixel/Line Divider
-	parameter LFD = 521;		//Line/Frame Divider
-	parameter HPW = 96;			//Horizontal synchro Pulse Width (pixels)
-	parameter HFP = 16;			//Horizontal synchro Front Porch (pixels)
-	parameter VPW = 2;			//Verical synchro Pulse Width (lines)
-	parameter VFP = 10;			//Verical synchro Front Porch (lines)
-	parameter UP_BOUND = 10;
-    parameter DOWN_BOUND = 480;  
-    parameter LEFT_BOUND = 20;  
-    parameter RIGHT_BOUND = 630;
+	reg [9:0] ball_x;
+	reg [8:0] ball_y;
 
-    reg [9:0] Hcnt;      // horizontal counter  if = PLD-1 -> Hcnt <= 0
-	reg [9:0] Vcnt;      // verical counter  if = LFD-1 -> Vcnt <= 0
+	reg [5:0] ball_r; //随位置变化
+	parameter move_speed = 5'b11100; //每桢运动的长度。在调试前暂定为1
 
-	reg [9:0] ball_x = 300;
-	reg [9:0] ball_y = 300;
-
-	parameter ball_r = 20;
-	parameter move_speed = 9'b1; //每桢运动的长度。在调试前暂定为1
-
-	reg [9:0] current_plate_x = 300; //当前平台的x
-	reg [9:0] current_plate_y = 300; //当前平台的y
-	reg [9:0] current_plate_r = 100; //当前平台的半?
-	reg [9:0] distance = 100; //与下一个平台的距离
-	reg [9:0] next_plate_r = 100; //下一个平台的半径
-
-
-	/*paramter 区域 */
-
-	reg [7:0] left_time = 0; //还剩下的飞行时间
-
-
-	/*生成hs与vs的计时*/
-	always@(posedge clk) 
-	begin
-		/*重置HCnt和VCnt的条件*/
-		if( Hcnt == PLD-1 ) //达到行边
-		begin
-			Hcnt <= 0; //重置
-			if( Vcnt == LFD-1 ) //判断是否需要重置列边缘
-				Vcnt <=0;
-			else
-				Vcnt <= Vcnt + 10'b1;
-		end
-		else
-			Hcnt <= Hcnt + 10'b1;
-		
-		/*生成hs*/
-		if( Hcnt == PAL - 1 + HFP)
-			hs <= 1'b0;
-		else if( Hcnt == PAL - 1 + HFP + HPW )
-			hs <= 1'b1;
-		
-		/*生成vs*/		
-		if( Vcnt == LAF - 1 + VFP ) 
-			vs <= 1'b0;
-		else if( Vcnt == LAF - 1 + VFP + VPW )
-			vs <= 1'b1;					
-	end
-
-
-	/* 由于重复赋值，故注释。
-	always @ (negedge )   //按完后的操作。先假设不保留以前的痕迹好了
-	begin
-		left_time <= press_time;
-		next_plate_r[9:6] <= Div[3:0];
-		next_plate_r[5:0] <= Div[5:0];
-	end
-	*/
-
+	reg [9:0] current_plate_x; //当前平台的x
+	reg [8:0] current_plate_y; //当前平台的y
+	reg [6:0] current_plate_r; //当前平台的半径
+	reg [9:0] next_plate_x; //当前平台的x
+	reg [8:0] next_plate_y; //当前平台的y
+	reg [6:0] next_plate_r; //下一个平台的半径
+	reg [6:0] next_next_plate_r;
+	reg [7:0] distance; //与下一个平台的距离
+	reg [3:0] left_time; //还剩下的飞行时间
+	reg [1:0] position;
+	reg [23:0] rom_data;
+	wire [11:0] rom_data_12;
+	
+	lose_ipcore lose(.clka(clk),
+						  .addra({Vcnt, Hcnt})
+						  .dout(rom_data)
+						  );
+	assign rom_data_12 = {rom_data(23:20),rom_data(15_12),rom_data(7:4)};
+	
 	//显示球、两个板子，很可能有bug
 	always @ (posedge clk)   
 	begin  
-		//展现当前板
-		if (Vcnt >= current_plate_y - current_plate_r 
-			&& Vcnt <= current_plate_y + current_plate_r 
-			&& Hcnt >= current_plate_x - current_plate_r
-			&& Hcnt <= current_plate_x + current_plate_r) 
-		begin //随机颜色
-			Red <= Hcnt[3:0];  
-			Green <= Hcnt[6:3];  
-			Blue <= Hcnt[9:6]; 
-		end  
-		
 		// 展现当前球
-		else if (Vcnt >= ball_y - ball_r 
-				&& Vcnt <= ball_y + ball_r 
-				&& Hcnt >= ball_x - ball_r
-				&& Hcnt <= ball_x + ball_r)
+		if (end_game) begin
+			Red = rom_data(23:20);
+			Green = rom_data(15:12);
+			Blue = rom_data(7:4);
+		end
+		else if ((Vcnt - ball_y) * (Vcnt - ball_y) + (Hcnt - ball_x) * (Hcnt - ball_x) < ball_r * ball_r)
 		begin  
-			Red <= 4'b0100;//小球颜色，有机会慢慢改
-			Green <= 4'b0100;  
-			Blue <= 4'b0100;
-		end  
-		else 
-		begin
-			Red <= 4'b0000;  
-			Green <= 4'b0000;  
-			Blue <= 4'b000;  
-		end		 
+			Red = 4'b0000;//小球颜色，有机会慢慢改
+			Green = 4'b0000;  
+			Blue = 4'b0000;
+		end
+		//展现当前板
+		else begin
+			if (Vcnt >= current_plate_y - current_plate_r 
+				&& Vcnt <= current_plate_y + current_plate_r 
+				&& Hcnt >= current_plate_x - current_plate_r
+				&& Hcnt <= current_plate_x + current_plate_r) begin //随机颜色
+				Red = Vcnt[3:0];
+				Green = Hcnt[3:0];
+				Blue = {Hcnt[1:0],Vcnt[1:0]}; 
+				end
+			//展现下一个板
+			else if (Vcnt >= next_plate_y - next_plate_r
+				&& Vcnt <= next_plate_y + next_plate_r 
+				&& Hcnt >= next_plate_x - next_plate_r
+				&& Hcnt <= next_plate_x + next_plate_r) begin //随机颜色
+				Red = Vcnt[3:0];
+				Green = Hcnt[3:0];
+				Blue = {Hcnt[1:0],Vcnt[1:0]};
+			end
+			else begin
+				Red = 4'b1111;  
+				Green = 4'b1111;  
+				Blue = 4'b1111;  
+			end
+		end
 	end
 
 	//根据vs刷新帧率
-	always @ (posedge vs)  //这里有逻辑问题，如何平衡left_time是个问题
+	always @ (posedge sclk or posedge rst)  //这里有逻辑问题，到底应该采用哪个时钟，且如何平衡left_time是个问题
    begin
-		if (is_pressing)
-			left_time <= press_time; 
-		else if (left_time > 0)
-		begin
+		if (rst) begin
+			left_time = 0;
+			ball_r = 20;
+			current_plate_x = 300; //当前平台的x
+			current_plate_y = 300; //当前平台的y
+			current_plate_r = 50; //当前平台的半径
+			ball_x = 300;
+			ball_y = 300;
+			distance = 150; //与下一个平台的距离
+			position = 01;
 			case(position)
-				2'b00: ball_y = ball_y + move_speed;
-				2'b01: ball_y = ball_y - move_speed;
-				2'b10: ball_x = ball_x - move_speed;
-				2'b11: ball_x = ball_x + move_speed;
+				2'b00: begin
+					next_plate_y = current_plate_y + distance;
+					next_plate_x = current_plate_x;
+				end
+				2'b01: begin
+					next_plate_y = current_plate_y - distance;
+					next_plate_x = current_plate_x;
+				end
+				2'b10: begin
+					next_plate_x = current_plate_x - distance;
+					next_plate_y = current_plate_y;
+				end
+				2'b11: begin
+					next_plate_x = current_plate_x + distance;
+					next_plate_y = current_plate_y;
+				end
+				default: ;
 			endcase
-			left_time <= left_time - 1'b1;
-		end	
-   end 
-   	//更新新版位置，判断游戏结束
-   always @ (negedge vs)
-   	begin
-   		case(position)
-   				2'b00: current_plate_y = current_plate_y + distance;
-				2'b01: current_plate_y = current_plate_y - distance;
-				2'b10: current_plate_x = current_plate_x - distance;
-				2'b11: current_plate_x = current_plate_x + distance;
-		endcase
-
-		//生成下一轮的位置
-		distance = current_plate_r + next_plate_r + Div[6:0];
-		current_plate_r = next_plate_r;
-		next_plate_r = Div[6:0];
-   		//判断这一轮是否输
-			if (ball_x + ball_r < current_plate_x - current_plate_r 
-			|| ball_x - ball_r > current_plate_x + current_plate_r
-			|| ball_y + ball_r < current_plate_y - current_plate_r
-			|| ball_y + ball_r > current_plate_y + current_plate_r)
-			end_game <= 1;
-		else
-		begin
-			get_score <= 1; //后续逻辑再添加
-			score_signal <= ~score_signal;
+			next_plate_r = 30; //下一个平台的半径
+			end_game = 0;
 		end
+		else begin
+			if (is_pressing)
+				left_time = press_time;
+			else if (left_time > 0)
+			begin
+				case(position)
+					2'b00: begin
+						ball_y = ball_y + move_speed;
+						ball_x = (ball_x + next_plate_x) / 2;
+						if (ball_y < (current_plate_y + next_plate_y) / 2) //改变r，营造在飞行的视觉效果
+							ball_r = 20 + 20 * (ball_y - current_plate_y) / (next_plate_y - current_plate_y);
+						else
+							ball_r = 20 + 20 * (next_plate_y - ball_y) / (next_plate_y - current_plate_y);
+					end
+					2'b01: begin
+						ball_y = ball_y - move_speed;
+						ball_x = (ball_x + next_plate_x) / 2;
+						if (ball_y < (current_plate_y + next_plate_y) / 2) //改变r，营造在飞行的视觉效果
+							ball_r = 20 + 20 * (ball_y - next_plate_y) / (current_plate_y - next_plate_y);
+						else
+							ball_r = 20 + 20 * (current_plate_y - ball_y) / (current_plate_y - next_plate_y);
+					end
+					2'b10: begin
+						ball_x = ball_x - move_speed;
+						ball_y = (ball_y + next_plate_y) / 2;
+						if (ball_x < (current_plate_x + next_plate_x) / 2) //改变r，营造在飞行的视觉效果
+							ball_r = 20 + 20 * (ball_x - next_plate_x) / (current_plate_x - next_plate_x);
+						else
+							ball_r = 20 + 20 * (current_plate_x - ball_x) / (current_plate_x - next_plate_x);
+					end
+					2'b11: begin
+						ball_x = ball_x + move_speed;
+						ball_y = (ball_y + next_plate_y) / 2;
+						if (ball_x < (current_plate_x + next_plate_x) / 2) //改变r，营造在飞行的视觉效果
+							ball_r = 20 + 20 * (ball_x - current_plate_x) / (next_plate_x - current_plate_x);
+						else
+							ball_r = 20 + 20 * (next_plate_x - ball_x) / (next_plate_x - current_plate_x);
+					end
+				endcase
+				left_time = left_time - 1'b1;
+				if (left_time == 0)
+				begin
+					next_next_plate_r = random[4:0] + 20;
+					if (next_next_plate_r > 40)
+						next_next_plate_r = 40;
+					position = random[1:0];
+					distance = next_plate_r + next_next_plate_r + random[4:0] + 5'd20;
+					if (next_plate_x + distance + next_next_plate_r > 600)
+						position = 2'b10;
+					else if (next_plate_x - distance - next_next_plate_r < 40)
+						position = 2'b11;
+					if (next_plate_y + distance + next_next_plate_r > 440)
+						position = 2'b01;
+					else if (next_plate_y - distance - next_next_plate_r < 40)
+						position = 2'b00;
+					//落脚板的位置
+					current_plate_y = next_plate_y;
+					current_plate_x = next_plate_x;
+					current_plate_r = next_plate_r;
+					//生成下一轮的位置
+					case(position)
+						2'b00: next_plate_y = next_plate_y + distance;
+						2'b01: next_plate_y = next_plate_y - distance;
+						2'b10: next_plate_x = next_plate_x - distance;
+						2'b11: next_plate_x = next_plate_x + distance;
+					endcase
+					next_plate_r = next_next_plate_r;
+					//判断这一轮是否输
+					if (ball_x < current_plate_x - current_plate_r
+						|| ball_x > current_plate_x + current_plate_r
+						|| ball_y < current_plate_y - current_plate_r
+						|| ball_y > current_plate_y + current_plate_r)
+						end_game = 1;
+					else
+					begin
+						get_score = 1; //后续逻辑再添加
+						score_signal = ~score_signal;
+					end	
+				end
+			end
+		end	
    end
 endmodule

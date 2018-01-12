@@ -27,12 +27,12 @@ module Seven_Seg_Display(input clk,
 						 output reg [3:0] selected,
 						 output reg [6:0] seg
     					 );
-	reg[3:0] num0 = 4'h0; //Arduino四位七段码的个位
-	reg[3:0] num1 = 4'h0; //Arduino四位七段码的十位
-	reg[3:0] num2 = 4'h0; //Arduino四位七段码的百位
-	reg[3:0] num3 = 4'h0; //Arduino四位七段码的千位
+	reg[3:0] num0; //Arduino四位七段码的个位
+	reg[3:0] num1; //Arduino四位七段码的十位
+	reg[3:0] num2; //Arduino四位七段码的百位
+	reg[3:0] num3; //Arduino四位七段码的千位
 	
-	reg[1:0] cnt = 2'b0;
+	reg[1:0] cnt;
 	
 	wire [6:0] out0; //个位输出
 	wire [6:0] out1; //十位输出
@@ -68,15 +68,12 @@ module Seven_Seg_Display(input clk,
 		
 			
 	// Display four seg
-	always@(posedge sclk)
+	always@(posedge sclk or posedge rst)
 	begin
-		if(rst) //high active
-		begin
+		if (rst)
 			cnt <= 0;
-		end
-		else
-		begin
-			case(cnt)
+		else begin
+		case(cnt)
 			2'b00:
 			begin
 				seg <= out0;
@@ -102,18 +99,15 @@ module Seven_Seg_Display(input clk,
 				seg <= seg;
 				selected <= selected;
 			end
-			endcase	
-			if(cnt == 2'b11)
-				cnt<=0;
-			else
-				cnt <= cnt + 1'b1;
+		endcase	
+			cnt <= cnt + 1'b1;
 		end
 	end
 
 	//一个加分的逻辑，暂时先不写那么复杂，只写加一分的，之后用case补全
 	always @ (posedge score_signal or negedge score_signal or posedge rst)
 	begin
-		if (rst == 1 || game_end == 1)//若按下复位键，则七段码全部归零
+		if (rst == 1)//若按下复位键，则七段码全部归零
 		begin
 			num0 <= 0;
 			num1 <= 0;
