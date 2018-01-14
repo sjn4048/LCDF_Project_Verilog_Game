@@ -28,6 +28,7 @@ module VGA_Display(input clk,
 				   input [8:0] Vcnt,//接row
 				   input [9:0] Hcnt,//接col
 					input [4:0] random,
+					input cheat,
 				   output reg[3:0] get_score,
 				   output reg score_signal,			   
 				   output reg end_game,
@@ -53,29 +54,35 @@ module VGA_Display(input clk,
 	reg [7:0] distance; //与下一个平台的距离
 	reg [3:0] left_time; //还剩下的飞行时间
 	reg [1:0] position;
-	reg [23:0] rom_data;
+	wire [23:0] rom_data;
 	wire [11:0] rom_data_12;
+	wire [11:0] color_seed;
+	wire [19:0] x_sqr, y_sqr, r_sqr;
 	
 	lose_ipcore lose(.clka(clk),
-						  .addra({Vcnt, Hcnt})
-						  .dout(rom_data)
+						  .addra({Hcnt, Vcnt}),
+						  .douta(rom_data)
 						  );
-	assign rom_data_12 = {rom_data(23:20),rom_data(15_12),rom_data(7:4)};
+	assign rom_data_12 = {rom_data[23:20],rom_data[15:12],rom_data[7:4]}; //将ip核中的图像RGB颜色取出高四位
+	assign color_seed = Hcnt * Vcnt; //这个seed不太好，暂时弃用
+	assign x_sqr = (Hcnt - ball_x) * (Hcnt - ball_x);
+	assign y_sqr = (Vcnt - ball_y) * (Vcnt - ball_y);
+	assign r_sqr = ball_r * ball_r;
 	
-	//显示球、两个板子，很可能有bug
+	//显示球、两个板子
 	always @ (posedge clk)   
 	begin  
-		// 展现当前球
+		//如果游戏结束，显示ip核中的图像
 		if (end_game) begin
-			Red = rom_data(23:20);
-			Green = rom_data(15:12);
-			Blue = rom_data(7:4);
-		end
-		else if ((Vcnt - ball_y) * (Vcnt - ball_y) + (Hcnt - ball_x) * (Hcnt - ball_x) < ball_r * ball_r)
+			Red = rom_data[23:20];
+			Green = rom_data[15:12];
+			Blue = rom_data[7:4];
+		end  // 展现当前球
+		else if (x_sqr + y_sqr < r_sqr)
 		begin  
-			Red = 4'b0000;//小球颜色，有机会慢慢改
-			Green = 4'b0000;  
-			Blue = 4'b0000;
+			Red = 4'b0100;//小球颜色，默认为黑，可以更改
+			Green = 4'b0100;  
+			Blue = 4'b0100;
 		end
 		//展现当前板
 		else begin
@@ -83,20 +90,20 @@ module VGA_Display(input clk,
 				&& Vcnt <= current_plate_y + current_plate_r 
 				&& Hcnt >= current_plate_x - current_plate_r
 				&& Hcnt <= current_plate_x + current_plate_r) begin //随机颜色
-				Red = Vcnt[3:0];
-				Green = Hcnt[3:0];
-				Blue = {Hcnt[1:0],Vcnt[1:0]}; 
+				Red = Vcnt[7:4];
+				Green = Hcnt[7:4];
+				Blue = {Hcnt[6:5],Vcnt[1:0]}; 
 				end
 			//展现下一个板
 			else if (Vcnt >= next_plate_y - next_plate_r
 				&& Vcnt <= next_plate_y + next_plate_r 
 				&& Hcnt >= next_plate_x - next_plate_r
 				&& Hcnt <= next_plate_x + next_plate_r) begin //随机颜色
-				Red = Vcnt[3:0];
-				Green = Hcnt[3:0];
-				Blue = {Hcnt[1:0],Vcnt[1:0]};
+				Red = Vcnt[7:4];
+				Green = Hcnt[7:4];
+				Blue = {Hcnt[6:5],Vcnt[1:0]}; 
 			end
-			else begin
+			else begin //展现其他区域，默认为白色
 				Red = 4'b1111;  
 				Green = 4'b1111;  
 				Blue = 4'b1111;  
@@ -104,20 +111,21 @@ module VGA_Display(input clk,
 		end
 	end
 
-	//根据vs刷新帧率
-	always @ (posedge sclk or posedge rst)  //这里有逻辑问题，到底应该采用哪个时钟，且如何平衡left_time是个问题
+	//刷新图像
+	
+	always @ (posedge sclk or posedge rst)
    begin
-		if (rst) begin
+		if (rst) begin //初始赋值
 			left_time = 0;
 			ball_r = 20;
 			current_plate_x = 300; //当前平台的x
 			current_plate_y = 300; //当前平台的y
 			current_plate_r = 50; //当前平台的半径
-			ball_x = 300;
+			ball_x = 300; //小球位置
 			ball_y = 300;
 			distance = 150; //与下一个平台的距离
-			position = 01;
-			case(position)
+			position = 01; //弹跳位置
+			case(position) //下一个板的位置，选择case写法，增加可拓展性
 				2'b00: begin
 					next_plate_y = current_plate_y + distance;
 					next_plate_x = current_plate_x;
@@ -137,56 +145,66 @@ module VGA_Display(input clk,
 				default: ;
 			endcase
 			next_plate_r = 30; //下一个平台的半径
-			end_game = 0;
+			end_game = 0; //重置游戏结果
 		end
 		else begin
-			if (is_pressing)
+			if (is_pressing) //如果还在按压，则同步按压时间
 				left_time = press_time;
-			else if (left_time > 0)
+			else if (left_time > 0) //如果已经不再按压，且仍在飞行，则执行飞行逻辑
 			begin
-				case(position)
+				case(position) //飞行逻辑
 					2'b00: begin
 						ball_y = ball_y + move_speed;
 						ball_x = (ball_x + next_plate_x) / 2;
+						/*
 						if (ball_y < (current_plate_y + next_plate_y) / 2) //改变r，营造在飞行的视觉效果
 							ball_r = 20 + 20 * (ball_y - current_plate_y) / (next_plate_y - current_plate_y);
 						else
 							ball_r = 20 + 20 * (next_plate_y - ball_y) / (next_plate_y - current_plate_y);
+						*/
 					end
 					2'b01: begin
 						ball_y = ball_y - move_speed;
 						ball_x = (ball_x + next_plate_x) / 2;
+						/*
 						if (ball_y < (current_plate_y + next_plate_y) / 2) //改变r，营造在飞行的视觉效果
 							ball_r = 20 + 20 * (ball_y - next_plate_y) / (current_plate_y - next_plate_y);
 						else
 							ball_r = 20 + 20 * (current_plate_y - ball_y) / (current_plate_y - next_plate_y);
+						*/
 					end
 					2'b10: begin
 						ball_x = ball_x - move_speed;
 						ball_y = (ball_y + next_plate_y) / 2;
+						/*
 						if (ball_x < (current_plate_x + next_plate_x) / 2) //改变r，营造在飞行的视觉效果
 							ball_r = 20 + 20 * (ball_x - next_plate_x) / (current_plate_x - next_plate_x);
 						else
 							ball_r = 20 + 20 * (current_plate_x - ball_x) / (current_plate_x - next_plate_x);
+						*/
 					end
 					2'b11: begin
 						ball_x = ball_x + move_speed;
 						ball_y = (ball_y + next_plate_y) / 2;
+						/*
 						if (ball_x < (current_plate_x + next_plate_x) / 2) //改变r，营造在飞行的视觉效果
 							ball_r = 20 + 20 * (ball_x - current_plate_x) / (next_plate_x - current_plate_x);
 						else
 							ball_r = 20 + 20 * (next_plate_x - ball_x) / (next_plate_x - current_plate_x);
+						*/
 					end
 				endcase
-				left_time = left_time - 1'b1;
-				if (left_time == 0)
+				left_time = left_time - 1'b1; //飞行剩余时间 -1
+				if (left_time == 0) //飞行结束，通过随机数生成下一跳的信息
 				begin
-					next_next_plate_r = random[4:0] + 20;
-					if (next_next_plate_r > 40)
+					next_next_plate_r = random[4:0] + 20; //下下个板子的半径
+					if (next_next_plate_r > 40) //防止下下个板子半径过高
 						next_next_plate_r = 40;
-					position = random[1:0];
-					distance = next_plate_r + next_next_plate_r + random[4:0] + 5'd20;
-					if (next_plate_x + distance + next_next_plate_r > 600)
+					position = random[1:0]; //根据随机数生成下一跳方向
+					distance = next_plate_r + next_next_plate_r + random[4:0] + 5'd20; //根据随机数生成下一跳距离
+					if (distance > 110)
+						distance = 110;
+					if (next_plate_x + distance + next_next_plate_r > 600) //以下4个if防止越界
 						position = 2'b10;
 					else if (next_plate_x - distance - next_next_plate_r < 40)
 						position = 2'b11;
@@ -194,11 +212,11 @@ module VGA_Display(input clk,
 						position = 2'b01;
 					else if (next_plate_y - distance - next_next_plate_r < 40)
 						position = 2'b00;
-					//落脚板的位置
+					//更新当前板的位置
 					current_plate_y = next_plate_y;
 					current_plate_x = next_plate_x;
 					current_plate_r = next_plate_r;
-					//生成下一轮的位置
+					//更新下一轮的位置
 					case(position)
 						2'b00: next_plate_y = next_plate_y + distance;
 						2'b01: next_plate_y = next_plate_y - distance;
@@ -211,11 +229,11 @@ module VGA_Display(input clk,
 						|| ball_x > current_plate_x + current_plate_r
 						|| ball_y < current_plate_y - current_plate_r
 						|| ball_y > current_plate_y + current_plate_r)
-						end_game = 1;
+						end_game = 1 & ~cheat;
 					else
 					begin
-						get_score = 1; //后续逻辑再添加
-						score_signal = ~score_signal;
+						get_score = 1; //得分为1分。此处可以随意更改得分数，有较高的可拓展性
+						score_signal = ~score_signal; //告诉显示逻辑，得分了
 					end	
 				end
 			end

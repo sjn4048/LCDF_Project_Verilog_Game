@@ -21,7 +21,7 @@
 `timescale 1ns / 1ps
 module random(
     input clk,
-    input RESET,
+    input rst,
     output reg [4:0] data
     );
     reg [4:0] data_next;
@@ -35,7 +35,7 @@ module random(
     end
 
     always @(posedge clk) begin
-        if(RESET)
+        if(rst)
             data <= 5'h1f;
         else
             data <= data_next;

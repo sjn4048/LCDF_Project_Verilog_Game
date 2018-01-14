@@ -105,7 +105,7 @@ module Seven_Seg_Display(input clk,
 	end
 
 	//一个加分的逻辑，暂时先不写那么复杂，只写加一分的，之后用case补全
-	always @ (posedge score_signal or negedge score_signal or posedge rst)
+	always @ (score_signal or posedge rst)
 	begin
 		if (rst == 1)//若按下复位键，则七段码全部归零
 		begin
