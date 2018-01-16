@@ -71,7 +71,11 @@ module Seven_Seg_Display(input clk,
 	always@(posedge sclk or posedge rst)
 	begin
 		if (rst)
+		begin
 			cnt <= 0;
+			selected <= 0;
+			seg <= 0;
+		end
 		else begin
 		case(cnt)
 			2'b00:
@@ -105,7 +109,7 @@ module Seven_Seg_Display(input clk,
 	end
 
 	//一个加分的逻辑，暂时先不写那么复杂，只写加一分的，之后用case补全
-	always @ (score_signal or posedge rst)
+	always @ (posedge score_signal or posedge rst)
 	begin
 		if (rst == 1)//若按下复位键，则七段码全部归零
 		begin

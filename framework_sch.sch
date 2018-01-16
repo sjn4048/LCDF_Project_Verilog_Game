@@ -82,7 +82,6 @@
         <signal name="XLXN_179(31:0)" />
         <signal name="XLXN_180(31:0)" />
         <signal name="SW_OK(3)" />
-        <signal name="XLXN_184" />
         <port polarity="Input" name="clk_100mhz" />
         <port polarity="Output" name="Buzzer" />
         <port polarity="Output" name="LEDCLR" />
@@ -920,31 +919,26 @@
         </branch>
         <branch name="clk_100mhz">
             <attrtext style="alignment:SOFT-RIGHT;fontsize:28;fontname:Arial" attrname="Name" x="2464" y="2208" type="branch" />
-            <wire x2="2496" y1="2208" y2="2208" x1="2464" />
-        </branch>
-        <branch name="SW(15:0),SW_OK(15:0)">
-            <attrtext style="alignment:SOFT-RIGHT;fontsize:28;fontname:Arial" attrname="Name" x="2464" y="2400" type="branch" />
-            <wire x2="2496" y1="2400" y2="2400" x1="2464" />
+            <wire x2="2480" y1="2208" y2="2208" x1="2464" />
+            <wire x2="2496" y1="2208" y2="2208" x1="2480" />
         </branch>
         <branch name="N0">
             <attrtext style="alignment:SOFT-RIGHT;fontsize:28;fontname:Arial" attrname="Name" x="2464" y="2272" type="branch" />
-            <wire x2="2496" y1="2272" y2="2272" x1="2464" />
+            <wire x2="2480" y1="2272" y2="2272" x1="2464" />
+            <wire x2="2496" y1="2272" y2="2272" x1="2480" />
         </branch>
         <branch name="V5">
             <attrtext style="alignment:SOFT-RIGHT;fontsize:28;fontname:Arial" attrname="Name" x="2464" y="2336" type="branch" />
-            <wire x2="2496" y1="2336" y2="2336" x1="2464" />
+            <wire x2="2480" y1="2336" y2="2336" x1="2464" />
+            <wire x2="2496" y1="2336" y2="2336" x1="2480" />
         </branch>
-        <instance x="2464" y="2432" name="XLXI_12" orien="R0">
-        </instance>
         <branch name="LED(7:0)">
-            <wire x2="3072" y1="2240" y2="2240" x1="2944" />
+            <wire x2="3056" y1="2240" y2="2240" x1="2944" />
+            <wire x2="3072" y1="2240" y2="2240" x1="3056" />
         </branch>
         <iomarker fontsize="28" x="3072" y="2240" name="LED(7:0)" orien="R0" />
         <instance x="128" y="1904" name="XLXI_30" orien="R0">
         </instance>
-        <branch name="XLXN_179(31:0)">
-            <wire x2="3008" y1="2304" y2="2304" x1="2944" />
-        </branch>
         <branch name="XLXN_180(31:0)">
             <wire x2="2080" y1="880" y2="880" x1="1984" />
         </branch>
@@ -970,6 +964,16 @@
             <wire x2="1696" y1="1744" y2="1744" x1="1456" />
             <wire x2="416" y1="1152" y2="1152" x1="288" />
             <wire x2="416" y1="1152" y2="1328" x1="416" />
+        </branch>
+        <branch name="SW(15:0),SW_OK(15:0)">
+            <attrtext style="alignment:SOFT-RIGHT;fontsize:28;fontname:Arial" attrname="Name" x="2464" y="2400" type="branch" />
+            <wire x2="2480" y1="2400" y2="2400" x1="2464" />
+            <wire x2="2496" y1="2400" y2="2400" x1="2480" />
+        </branch>
+        <instance x="2464" y="2432" name="XLXI_12" orien="R0">
+        </instance>
+        <branch name="XLXN_179(31:0)">
+            <wire x2="3008" y1="2304" y2="2304" x1="2944" />
         </branch>
     </sheet>
 </drawing>

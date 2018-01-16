@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <report-views version="2.0" >
  <header>
-  <DateModified>2018-01-14T16:53:16</DateModified>
+  <DateModified>2018-01-15T22:26:40</DateModified>
   <ModuleName>framework_sch</ModuleName>
-  <SummaryTimeStamp>2018-01-12T15:05:35</SummaryTimeStamp>
+  <SummaryTimeStamp>2018-01-14T18:13:17</SummaryTimeStamp>
   <SavedFilePath>D:/Code/Xilinx/FINAL_PROJECT/iseconfig/framework_sch.xreport</SavedFilePath>
   <ImplementationReportsDirectory>D:/Code/Xilinx/FINAL_PROJECT\</ImplementationReportsDirectory>
   <DateInitialized>2018-01-09T17:28:03</DateInitialized>

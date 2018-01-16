@@ -34,7 +34,7 @@ module random(
         data_next[0] = data[0]^data_next[2];
     end
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if(rst)
             data <= 5'h1f;
         else
