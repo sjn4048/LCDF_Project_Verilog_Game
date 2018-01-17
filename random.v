@@ -26,8 +26,8 @@ module random(
     );
     reg [4:0] data_next;
 
-    always @(posedge clk) begin
-        data_next[4] = data[4]^data[1];
+    always @(posedge clk) begin //利用线性反馈移位寄存器的原理生成随机数
+        data_next[4] = data[4]^data[1]; //本模块采用的线性函数为异或。
         data_next[3] = data[3]^data[0];
         data_next[2] = data[2]^data_next[4];
         data_next[1] = data[1]^data_next[3];
@@ -35,9 +35,9 @@ module random(
     end
 
     always @(posedge clk or posedge rst) begin
-        if(rst)
+        if(rst) //复位键给出初始值
             data <= 5'h1f;
         else
-            data <= data_next;
+            data <= data_next; //在每个clk上升沿刷新随机数
 	 end
 endmodule

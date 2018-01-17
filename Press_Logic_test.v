@@ -56,11 +56,11 @@ module Press_Logic_test;
 			forever #20 clk <= ~clk;
 			begin
 				#50;
-				rst <= 1;
+				rst <= 1; //仿真按下复位键
 				#100;
 				rst <= 0;
 				#100;
-				BTN <= 1;
+				BTN <= 1; //仿真按键蓄力
 				#400;
 				BTN <= 0;
 				#200;

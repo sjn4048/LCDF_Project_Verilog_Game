@@ -18,7 +18,7 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
-module VGA(input clk,
+module VGA(input clk, /******本代码非原创，来自课程FTP，因此省略注释******/
 			  input rst,
 			  input [11:0] Din,
 			  output reg[8:0] row,

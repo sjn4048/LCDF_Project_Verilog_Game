@@ -64,12 +64,12 @@ module Seven_Seg_Display_test;
 			forever #20 clk <= ~clk;
 			forever #60 sclk <= ~clk;
 			begin
-				get_score <= 1;
-				rst <= 1;
+				get_score <= 1; //仿真得分信号
+				rst <= 1; //仿真按下复位键
 				#200;
 				rst <= 0;
 				#50;
-				score_signal <= ~score_signal;
+				score_signal <= ~score_signal; //传入得分信号，观察分数变化情况
 				#60;
 				score_signal <= ~score_signal;
 				#100;

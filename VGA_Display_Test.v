@@ -86,14 +86,14 @@ module VGA_Display_Test;
 			forever #20 clk <= ~clk;
 			forever #50 Div[22] <= ~Div[22];
 			begin
-				rst <= 1;
+				rst <= 1; //复位
 				#100;
 				rst <= 0;
 				#20;
-				position <= 2'b01;
-				is_pressing <= 1;
-				press_time <= 4'b1111;
-				Div <= 8'h11111111;
+				position <= 2'b01; //规定一个方向（可任意指定）
+				is_pressing <= 1; //仿真按压信号
+				press_time <= 4'b1111; //仿真按压时间
+				Div <= 8'h11111111; 
 				#100;
 				is_pressing <= 0;
 				#500;

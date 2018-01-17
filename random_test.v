@@ -47,11 +47,11 @@ module random_test;
 		#100;
 		fork
 			begin
-				rst = 1;
-				#50;
+				rst = 1; //仿真按下复位键
+				#50; 
 				rst = 0;
 			end
-		forever #20 clk <= ~ clk;
+		forever #20 clk <= ~ clk; //观察随机数
 		// Add stimulus here
 		join
 	end

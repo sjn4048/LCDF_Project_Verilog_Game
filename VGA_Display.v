@@ -38,10 +38,10 @@ module VGA_Display(input clk,
 				   output reg rdn
     			   );
 
-	reg [9:0] ball_x;
+	reg [9:0] ball_x; //小球位置
 	reg [8:0] ball_y;
 
-	reg [5:0] ball_r; //随位置变化
+	reg [5:0] ball_r;
 	parameter move_speed = 5'b11100; //每桢运动的长度。在调试前暂定为1
 
 	reg [9:0] current_plate_x; //当前平台的x
@@ -58,7 +58,7 @@ module VGA_Display(input clk,
 	wire [11:0] rom_data_12;
 	wire [11:0] color_seed;
 	
-	localparam UP = 2'b01;
+	localparam UP = 2'b01; //用localparam的方法定义方向，更直观
 	localparam DOWN = 2'b00;
 	localparam LEFT = 2'b10;
 	localparam RIGHT = 2'b11;
@@ -66,11 +66,11 @@ module VGA_Display(input clk,
 	wire [19:0] x_sqr, y_sqr, r_sqr;
 	wire [10:0] up_next, down_next, left_next, right_next;
 	
-	assign x_sqr = (Hcnt - ball_x) * (Hcnt - ball_x);
+	assign x_sqr = (Hcnt - ball_x) * (Hcnt - ball_x); //这三个用于为小球绘图
 	assign y_sqr = (Vcnt - ball_y) * (Vcnt - ball_y);
 	assign r_sqr = ball_r * ball_r;
 
-	assign up_next = next_plate_y - distance - next_next_plate_r;
+	assign up_next = next_plate_y - distance - next_next_plate_r; //这四个用于决定下一跳的方向
 	assign down_next = next_plate_y + distance + next_next_plate_r;
 	assign left_next = next_plate_x - distance - next_next_plate_r;
 	assign right_next = next_plate_x + distance + next_next_plate_r;
@@ -127,11 +127,11 @@ module VGA_Display(input clk,
 	//刷新图像
 	always @ (posedge sclk or posedge rst)
 	begin
-		if (rst)
+		if (rst) //复位
 		begin
 			ball_x = 300; //小球位置
 			ball_y = 300;
-			left_time = 0;
+			left_time = 0; //剩余飞行时间清零
 		end
 		else begin
 			if (is_pressing) //如果还在按压，则同步按压时间
@@ -261,7 +261,7 @@ module VGA_Display(input clk,
 					|| ball_x > current_plate_x + current_plate_r
 					|| ball_y < current_plate_y - current_plate_r
 					|| ball_y > current_plate_y + current_plate_r)
-					end_game = 1 & ~cheat;
+					end_game = 1 & ~cheat; //如果cheat打开，则永远不会游戏结束
 				else
 				begin
 					get_score = 1; //得分为1分。此处可以随意更改得分数，有较高的可拓展性

@@ -67,7 +67,7 @@ module Seven_Seg_Display(input clk,
 		);
 		
 			
-	// Display four seg
+	// 选择显示的四位七段码
 	always@(posedge sclk or posedge rst)
 	begin
 		if (rst)
@@ -108,7 +108,7 @@ module Seven_Seg_Display(input clk,
 		end
 	end
 
-	//一个加分的逻辑，暂时先不写那么复杂，只写加一分的，之后用case补全
+	//一个加分的逻辑，这里是一分的，加分更多的情况可以随时拓展
 	always @ (posedge score_signal or posedge rst)
 	begin
 		if (rst == 1)//若按下复位键，则七段码全部归零
